@@ -1,0 +1,110 @@
+#!/usr/bin/env php
+<?php
+////////////////////////////////////////////////////////////////////////////////
+// __________ __             ________                   __________              
+// \______   \  |__ ______  /  _____/  ____ _____ ______\______   \ _______  ___
+//  |     ___/  |  \\____ \/   \  ____/ __ \\__  \\_  __ \    |  _//  _ \  \/  /
+//  |    |   |   Y  \  |_> >    \_\  \  ___/ / __ \|  | \/    |   (  <_> >    < 
+//  |____|   |___|  /   __/ \______  /\___  >____  /__|  |______  /\____/__/\_ \
+//                \/|__|           \/     \/     \/             \/            \/
+// =============================================================================
+//         Designed and Developed by Brad Jones <bj @="gravit.com.au" />        
+// =============================================================================
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Section: Configuration
+ * =============================================================================
+ * The below will automatically configure the build based on a few conventions.
+ * But of course it is trival to make changes in the event the build is out of
+ * the ordinary.
+ */
+ 
+// Init our config array
+$config = array();
+
+// Name of phar
+$config['app-name'] = basename(__DIR__);
+
+// Get our current directory
+$config['base-dir'] = realpath(__DIR__);
+
+// Assume the src is in a local src dir
+$config['src-dir'] = $config['base-dir'].'/src';
+
+// Assume we are building the phar in a local bin dir
+$config['bin-dir'] = $config['base-dir'].'/bin';
+
+// The final phar name
+$config['phar-name'] = $config['bin-dir'].'/'.$config['app-name'].'.phar';
+
+// To build a simple calling script or not
+$config['create-exe'] = true;
+
+// The final phar name
+$config['exe-name'] = $config['bin-dir'].'/'.$config['app-name'];
+
+// What file will we use as our stub
+$config['stub'] = 'main.php';
+
+// Run composer before building the phar
+$config['composer'] = false;
+
+// Run the built phar afterwards
+$config['run'] = true;
+
+/**
+ * Section: Run composer
+ * =============================================================================
+ * Before we build we may like to run composor to
+ * update the any third party vendor libraries.
+ */
+
+if ($config['composer'])
+{
+	system('composer update -d '.$config['src-dir']);
+}
+
+/**
+ * Section: Build Time
+ * =============================================================================
+ * This is where we actually build the phar, pretty straight forward.
+ */
+
+$phar = new Phar($config['phar-name']);
+$phar->buildFromDirectory($config['src-dir']);
+$phar->setStub($phar->createDefaultStub($config['stub']));
+
+/**
+ * Section: Create a simple executable bash script
+ * =============================================================================
+ * If you wish we can create this extra little file so that one does not have
+ * to call their new phar like this "php myapp.phar", they can simply call
+ * "./myapp" just like any other console application.
+ */
+
+if ($config['create-exe'])
+{
+	file_put_contents
+	(
+		$config['exe-name'],
+		'#!/usr/bin/env bash'."\n".
+		'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"'."\n".
+		'php $DIR/'.$config['app-name'].'.phar'
+	);
+
+	chmod($config['exe-name'], 0755);
+}
+
+/**
+ * Section: Run the built phar
+ * =============================================================================
+ * While debugging your code you are probably going to be doing lots of little
+ * builds and this just helps you so you don't have to then run a second command
+ * to actually test your changes.
+ */
+
+if ($config['run'])
+{
+	system('php '.$config['phar-name']);
+}
